@@ -334,18 +334,41 @@
             },
             options: {
                 responsive: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: {
+                                size: window.innerWidth < 600 ? 10 : 30
+                            }
+                        }
+                    },
+                    tooltip: {
+                        bodyFont: {
+                            size: window.innerWidth < 600 ? 10 : 30
+                        },
+                        titleFont: {
+                            size: window.innerWidth < 600 ? 11 : 30
+                        }
+                    }
+                },
                 scales: {
                     x: {
-                        type: type === 'line' || type === 'time' ? 'time' : 'category',
-                        time: {
-                            unit: 'day',
-                        },
+                        ticks: {
+                            font: {
+                                size: window.innerWidth < 600 ? 9 : 30
+                            }
+                        }
                     },
                     y: {
-                        beginAtZero: true,
+                        ticks: {
+                            font: {
+                                size: window.innerWidth < 600 ? 9 : 30
+                            }
+                        }
                     }
                 }
             }
+
         });
     }
 </script>
