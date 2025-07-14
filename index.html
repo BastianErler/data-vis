@@ -1,384 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Date Analysis Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/dist/date-fns.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <style>
-        :root {
-            --bg: #f7f7f7;
-            --fg: #111;
-            --card-bg: white;
-            --accent: #4caf50;
-            --border: #ccc;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #121212;
-                --fg: #eee;
-                --card-bg: #1e1e1e;
-                --accent: #81c784;
-                --border: #444;
-            }
-        }
-
-        body {
-            margin: 0;
-            padding: 1rem;
-            font-family: system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--fg);
-        }
-
-        h1, h2 {
-            margin: 1.5rem 0 1rem;
-        }
-
-        textarea {
-            width: 100%;
-            height: 150px;
-            font-family: monospace;
-            font-size: 0.95rem;
-            padding: 1rem;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            background-color: var(--card-bg);
-            color: var(--fg);
-        }
-
-        button {
-            padding: 0.5rem 1rem;
-            font-size: 1rem;
-            margin: 0.5rem 0 2rem;
-            cursor: pointer;
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-        }
-
-        canvas {
-            max-width: 100%;
-            margin: 20px 0;
-            background: var(--card-bg);
-            border-radius: 6px;
-            padding: 1rem;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr; /* force single column default */
-            gap: 20px;
-        }
-
-        /* Only allow multi-column layout if the screen is wide enough */
-        @media (min-width: 1200px) {
-            .grid {
-                grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-            }
-        }
-
-        .heatmap {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            font-size: 10px;
-            border: 1px solid var(--border);
-        }
-
-        .heatmap div {
-            height: 22px;
-            border: 1px solid var(--border);
-            background-color: #ccc;
-            cursor: default;
-        }
-
-        .heatmap .day {
-            background-color: var(--accent);
-            color: white;
-        }
-
-        .small {
-            font-size: 0.9em;
-            color: var(--fg);
-            opacity: 0.7;
-        }
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 6px;
-            padding: 1rem;
-            box-shadow: 0 0 4px rgba(0,0,0,0.2);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Tools Dashboard</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f9f9f9;
+      color: #333;
+      max-width: 600px;
+      margin: 3rem auto;
+      padding: 1rem;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+      color: #2c3e50;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      margin-bottom: 1rem;
+    }
+    a {
+      text-decoration: none;
+      background: #4caf50;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 5px;
+      display: inline-block;
+      font-size: 1rem;
+    }
+    a:hover {
+      background: #43a047;
+    }
+  </style>
 </head>
 <body>
-
-<h1>Date Analysis Dashboard</h1>
-<label for="dateInput">Paste your dates below (format: <code>DD.MM.YYYY</code>):</label>
-<textarea id="dateInput" placeholder="22.04.2025&#10;26.04.2025&#10;24.05.2025&#10;24.05.2025"></textarea>
-<button onclick="analyze()">Analyze</button>
-
-<div id="output" style="display:none;">
-
-
-    <div class="grid">
-        <div class="card">
-            <h2>1. Daily Event Counts</h2>
-            <canvas id="dailyChart"></canvas>
-        </div>
-        <div class="card">
-            <h2>2. Day of Week Frequency</h2>
-            <canvas id="weekdayChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h2>3. Monthly Aggregation</h2>
-            <canvas id="monthlyChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h2>4. Rolling 7-Day Average</h2>
-            <canvas id="rollingChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h2>5. Cumulative Total</h2>
-            <canvas id="cumulativeChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h2>6. Gaps Between Events</h2>
-            <canvas id="gapChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h2>7. Weekday vs Weekend</h2>
-            <canvas id="weekChart"></canvas>
-        </div>
-    </div>
-
-    <h2>8. Burstiness Metric</h2>
-    <p class="small" id="burstiness"></p>
-
-    <h2>9. Calendar Heatmap</h2>
-    <div id="calendarHeatmap" class="heatmap"></div>
-</div>
-
-<script>
-    function parseGermanDate(str) {
-        const [d, m, y] = str.split('.');
-        return new Date(`${y}-${m}-${d}`);
-    }
-
-    function formatDateKey(date) {
-        return date.toISOString().split('T')[0];
-    }
-
-    function analyze() {
-        const input = document.getElementById('dateInput').value;
-        const lines = input.split(/[\n,;]+/).map(l => l.trim()).filter(Boolean);
-
-        localStorage.setItem("dateInput", input);
-
-        const events = lines
-            .map(parseGermanDate)
-            .filter(d => !isNaN(d))
-            .map(d => new Date(d.getFullYear(), d.getMonth(), d.getDate())); // strip time
-
-        if (!events.length) return alert('No valid dates found.');
-
-        events.sort((a, b) => a - b);
-
-        // Daily count
-        const dailyCounts = {};
-        events.forEach(d => {
-            const key = formatDateKey(d);
-            dailyCounts[key] = (dailyCounts[key] || 0) + 1;
-        });
-
-        const uniqueDates = Object.keys(dailyCounts).sort();
-        const counts = uniqueDates.map(d => dailyCounts[d]);
-
-        renderChart('dailyChart', 'bar', uniqueDates, counts, 'Events per Day');
-
-        // Day-of-week
-        const weekdayCountsRaw = Array(7).fill(0);
-        events.forEach(d => weekdayCountsRaw[d.getDay()]++);
-
-        // Rearranged to start on Monday
-        const weekdayCounts = [
-            weekdayCountsRaw[1], // Mon
-            weekdayCountsRaw[2], // Tue
-            weekdayCountsRaw[3], // Wed
-            weekdayCountsRaw[4], // Thu
-            weekdayCountsRaw[5], // Fri
-            weekdayCountsRaw[6], // Sat
-            weekdayCountsRaw[0], // Sun
-        ];
-
-        const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        renderChart('weekdayChart', 'bar', weekdays, weekdayCounts, 'Events per Weekday');
-
-        // Monthly aggregation
-        const monthlyCounts = {};
-        events.forEach(d => {
-            const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}`;
-            monthlyCounts[key] = (monthlyCounts[key] || 0) + 1;
-        });
-        const months = Object.keys(monthlyCounts).sort();
-        const monthValues = months.map(m => monthlyCounts[m]);
-        renderChart('monthlyChart', 'bar', months, monthValues, 'Events per Month');
-
-        // Rolling average (7-day)
-        const rollingLabels = [];
-        const rollingValues = [];
-        for (let i = 6; i < uniqueDates.length; i++) {
-            let sum = 0;
-            for (let j = i - 6; j <= i; j++) {
-                sum += dailyCounts[uniqueDates[j]];
-            }
-            rollingLabels.push(uniqueDates[i]);
-            rollingValues.push((sum / 7).toFixed(2));
-        }
-        renderChart('rollingChart', 'line', rollingLabels, rollingValues, '7-Day Rolling Avg');
-
-        // Cumulative
-        let cum = 0;
-        const cumValues = counts.map(c => cum += c);
-        renderChart('cumulativeChart', 'line', uniqueDates, cumValues, 'Cumulative Events');
-
-        // Gaps between events
-        const gaps = [];
-        for (let i = 1; i < events.length; i++) {
-            const delta = (events[i] - events[i - 1]) / (1000 * 60 * 60 * 24);
-            gaps.push(delta);
-        }
-        const gapFreq = {};
-        gaps.forEach(g => gapFreq[g] = (gapFreq[g] || 0) + 1);
-        const gapKeys = Object.keys(gapFreq).sort((a, b) => a - b);
-        renderChart('gapChart', 'bar', gapKeys, gapKeys.map(k => gapFreq[k]), 'Gaps Between Events (days)');
-
-        // Weekday vs weekend
-        let weekday = 0, weekend = 0;
-        events.forEach(d => {
-            const day = d.getDay();
-            if (day === 0 || day === 6) weekend++;
-            else weekday++;
-        });
-        renderChart('weekChart', 'bar', ['Weekday', 'Weekend'], [weekday, weekend], 'Weekday vs Weekend');
-
-        // Burstiness
-        const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
-        const variance = gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length;
-        const burstiness = ((variance / mean) || 0).toFixed(2);
-        document.getElementById('burstiness').textContent =
-            `Burstiness index: ${burstiness} (higher = more clustered, < 1 = regular)`;
-
-        // Heatmap
-        const heatmapContainer = document.getElementById('calendarHeatmap');
-        heatmapContainer.innerHTML = '';
-        heatmapContainer.style.gridTemplateColumns = 'repeat(7, 1fr)'; // 7 days per week
-
-        const heat = {};
-        Object.entries(dailyCounts).forEach(([date, count]) => {
-            heat[date] = count;
-        });
-
-        const start = new Date(events[0].getFullYear(), 0, 1);
-        const end = new Date(events[events.length - 1].getFullYear(), 11, 31);
-
-        // Align to Monday
-        let current = new Date(start);
-        current.setDate(current.getDate() - ((current.getDay() + 6) % 7)); // back to Monday
-
-        while (current <= end) {
-            for (let i = 0; i < 7; i++) {
-                const key = formatDateKey(current);
-                const cell = document.createElement('div');
-                const isInYear = current.getFullYear() === start.getFullYear();
-                if (isInYear && heat[key]) {
-                    cell.textContent = heat[key];
-                    cell.classList.add('day');
-                } else if (isInYear) {
-                    cell.textContent = '';
-                } else {
-                    cell.style.visibility = 'hidden';
-                }
-                heatmapContainer.appendChild(cell);
-                current.setDate(current.getDate() + 1);
-            }
-        }
-
-
-        document.getElementById('output').style.display = 'block';
-    }
-
-    function renderChart(id, type, labels, data, label) {
-        const ctx = document.getElementById(id).getContext('2d');
-        if (window.chartInstances === undefined) window.chartInstances = {};
-        if (window.chartInstances[id]) window.chartInstances[id].destroy();
-        window.chartInstances[id] = new Chart(ctx, {
-            type,
-            data: {
-                labels,
-                datasets: [{
-                    label,
-                    data,
-                    backgroundColor: type === 'bar' ? 'steelblue' : 'lightseagreen',
-                    borderColor: 'teal',
-                    tension: 0.3,
-                    fill: type === 'line',
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        labels: {
-                            font: {
-                                size: window.innerWidth < 600 ? 10 : 30
-                            }
-                        }
-                    },
-                    tooltip: {
-                        bodyFont: {
-                            size: window.innerWidth < 600 ? 10 : 30
-                        },
-                        titleFont: {
-                            size: window.innerWidth < 600 ? 11 : 30
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            font: {
-                                size: window.innerWidth < 600 ? 9 : 30
-                            }
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            font: {
-                                size: window.innerWidth < 600 ? 9 : 30
-                            }
-                        }
-                    }
-                }
-            }
-
-        });
-    }
-</script>
-<script>
-    // Restore from localStorage on page load
-    document.addEventListener("DOMContentLoaded", () => {
-        const saved = localStorage.getItem("dateInput");
-        if (saved) document.getElementById("dateInput").value = saved;
-    });
-</script>
-
+  <h1>📊 Tool Links</h1>
+  <ul>
+    <li><a href="data-vis.html">📅 Date Analysis Dashboard</a></li>
+    <li><a href="sauna-plan.html">🧖‍♀️ Sauna-Bauplanung Übersicht</a></li>
+  </ul>
 </body>
 </html>
